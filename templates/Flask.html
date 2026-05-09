@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAYE | Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-green-50 to-emerald-100 min-h-screen font-sans text-gray-800" x-data="marketApp()" x-cloak>
+
+    <!-- TOAST NOTIFICATION -->
+    <div x-show="showToast" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-4"
+         class="fixed bottom-4 right-4 z-[200] flex items-center p-4 mb-4 text-gray-500 bg-white rounded-xl shadow-xl border-l-4"
+         :class="toastType === 'success' ? 'border-green-500' : 'border-red-500'">
+        <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg"
+             :class="toastType === 'success' ? 'text-green-500 bg-green-100' : 'text-red-500 bg-red-100'">
+            <i class="fas" :class="toastType === 'success' ? 'fa-check' : 'fa-times'"></i>
+        </div>
+        <div class="ms-3 text-sm font-medium mr-4" x-text="toastMessage"></div>
+        <button @click="showToast = false" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <!-- FULL PAGE LOADER -->
+    <div x-show="isAppLoading" class="fixed inset-0 z-[300] bg-white flex flex-col items-center justify-center">
+        <i class="fas fa-leaf text-5xl text-green-500 animate-bounce"></i>
+        <p class="text-green-600 font-bold mt-4 animate-pulse">Loading SAYE...</p>
+    </div>
+
+    <!-- 1. LOGIN / REGISTER SCREEN -->
+    <template x-if="!isLoggedIn && !isAppLoading">
+        <div class="fixed inset-0 flex items-center justify-center z-[100] bg-[url('https://images.unsplash.com/photo-1500937386664-56d1dfef3854?q=80&w=2000')] bg-cover bg-center">
+            <div class="absolute inset-0 bg-gradient-to-b from-green-900/80 to-emerald-900/90 backdrop-blur-sm"></div>
+            
+            <div class="bg-white/95 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl w-full max-w-md mx-4 relative z-10 border border-white/40 max-h-[90vh] overflow-y-auto">
+                <div class="bg-gradient-to-br from-green-100 to-emerald-50 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 shadow-inner border border-green-200">
+                    <i class="fas fa-leaf text-4xl bg-clip-text text-transparent bg-gradient-to-r from-green-600 to-emerald-500 drop-shadow-sm"></i>
+                </div>
+                <h1 class="text-3xl font-extrabold mb-1 text-gray-800 tracking-tight text-center" x-text="authMode === 'login' ? 'Welcome Back' : 'Join SAYE'"></h1>
+                <p class="text-gray-500 mb-6 font-medium text-center text-sm" x-text="authMode === 'login' ? 'Login to continue' : 'Farm to table, made simple.'"></p>
+                
+                <form @submit.prevent="authMode === 'login' ? doLogin() : doRegister()" class="space-y-4">
+                    
+                    <template x-if="authMode === 'register'">
+                        <div class="flex items-center justify-center space-x-4 mb-4">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" x-model="authForm.role" value="consumer" class="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300">
+                                <span class="ml-2 text-sm font-bold text-gray-700">I'm a Customer</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" x-model="authForm.role" value="farmer" class="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300">
+                                <span class="ml-2 text-sm font-bold text-gray-700">I'm a Farmer</span>
+                            </label>
+                        </div>
+                    </template>
+
+                    <template x-if="authMode === 'register'">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
+                            <input type="text" x-model="authForm.full_name" required class="block w-full rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 sm:text-sm p-3 border border-gray-200 bg-gray-50">
+                        </div>
+                    </template>
+
+                    <template x-if="authMode === 'register' && authForm.role === 'farmer'">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Shop Name</label>
+                            <input type="text" x-model="authForm.shop_name" required class="block w-full rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 sm:text-sm p-3 border border-gray-200 bg-gray-50">
+                        </div>
+                    </template>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Email or Phone Number</label>
+                        <input type="text" name="username" autocomplete="username" x-model="authForm.contact" required class="block w-full rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 sm:text-sm p-3 border border-gray-200 bg-gray-50" placeholder="09123456789 or email@val.com">
+                    </div>
+
+                    <template x-if="authMode === 'register'">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Complete Address</label>
+                            <input type="text" x-model="authForm.address" required class="block w-full rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 sm:text-sm p-3 border border-gray-200 bg-gray-50">
+                        </div>
+                    </template>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Password</label>
+                        <div class="relative" x-data="{ showPw: false }">
+                            <input :type="showPw ? 'text' : 'password'" name="password" autocomplete="current-password" x-model="authForm.password" required class="block w-full rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 sm:text-sm p-3 border border-gray-200 bg-gray-50 pr-10">
+                            <button type="button" @click="showPw = !showPw" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-green-600">
+                                <i class="fas" :class="showPw ? 'fa-eye-slash' : 'fa-eye'"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center mt-2">
+                            <input id="remember-me" name="remember-me" type="checkbox" x-model="authForm.remember" class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-900 font-bold">
+                                Remember me
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" :disabled="authLoading" class="w-full mt-6 py-3 bg-gradient-to-r from-green-600 to-emerald-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        <i x-show="authLoading" class="fas fa-spinner fa-spin"></i>
+                        <span x-text="authMode === 'login' ? 'Login' : 'Create Account'"></span>
+                    </button>
+                </form>
+
+                <div class="mt-6 text-center text-sm text-gray-600 font-medium">
+                    <span x-text="authMode === 'login' ? 'Don\'t have an account?' : 'Already have an account?'"></span>
+                    <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="text-green-600 font-bold hover:underline ml-1" x-text="authMode === 'login' ? 'Sign up' : 'Login'"></button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- 2. MAIN APP -->
+    <template x-if="isLoggedIn && !isAppLoading">
+        <div class="min-h-screen flex flex-col">
+            <!-- Navigation -->
+            <nav class="glass-panel sticky top-0 z-40 px-6 py-4 flex items-center justify-between shadow-sm transition-all duration-300">
+                <div class="flex items-center gap-3 cursor-pointer group" @click="currentTab = role === 'admin' ? 'admin' : 'homepage'">
+                    <i class="fas fa-leaf text-2xl text-green-600 group-hover:rotate-12 transition-transform"></i>
+                    <h1 class="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-green-600 to-emerald-500 hidden sm:block">SAYE</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4 sm:space-x-6 text-gray-600 font-medium">
+                    <div class="hidden md:flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
+                        <template x-if="currentUser && currentUser.profile_img">
+                            <img :src="currentUser.profile_img" class="w-6 h-6 rounded-full object-cover">
+                        </template>
+                        <template x-if="!currentUser || !currentUser.profile_img">
+                            <i class="fas fa-user-circle text-gray-400"></i>
+                        </template>
+                        <span class="text-xs font-bold text-gray-700" x-text="currentUser.full_name"></span>
+                    </div>
+
+                    <template x-if="role !== 'admin'">
+                        <button @click="currentTab = 'homepage'" class="hover:text-green-600 transition p-2 hover:bg-green-50 rounded-lg" title="Home"><i class="fas fa-home text-lg"></i></button>
+                    </template>
+                    
+                    <template x-if="role === 'farmer'">
+                        <button @click="currentTab = 'yourPage'" class="hover:text-green-600 transition p-2 hover:bg-green-50 rounded-lg" title="My Stall"><i class="fas fa-store text-lg"></i></button>
+                    </template>
+
+                    <template x-if="role !== 'admin'">
+                        <button @click="currentTab = 'messages'" class="hover:text-green-600 transition p-2 hover:bg-green-50 rounded-lg relative" title="Messages">
+                            <i class="fas fa-comment-dots text-lg"></i>
+                            <template x-if="chatContacts.reduce((sum, c) => sum + (c.unread_count || 0), 0) > 0">
+                                <span class="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white" x-text="chatContacts.reduce((sum, c) => sum + (c.unread_count || 0), 0)"></span>
+                            </template>
+                        </button>
+                    </template>
+
+                    <!-- Notifications Bell -->
+                    <template x-if="isLoggedIn">
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open; if(open) markNotificationsRead()" class="hover:text-green-600 transition p-2 hover:bg-green-50 rounded-lg relative" title="Notifications">
+                                <i class="fas fa-bell text-lg"></i>
+                                <template x-if="notifications.filter(n => !n.is_read).length > 0">
+                                    <span class="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white" x-text="notifications.filter(n => !n.is_read).length"></span>
+                                </template>
+                            </button>
+                            <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                                <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                    <h3 class="font-bold text-gray-800">Notifications</h3>
+                                    <span class="text-xs text-gray-400 font-medium" x-text="notifications.length + ' total'"></span>
+                                </div>
+                                <div class="max-h-96 overflow-y-auto">
+                                    <template x-for="n in notifications" :key="n.id">
+                                        <div class="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer" :class="!n.is_read ? 'bg-green-50/30' : ''">
+                                            <div class="flex gap-3">
+                                                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" :class="n.type === 'order' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'">
+                                                    <i class="fas" :class="n.type === 'order' ? 'fa-shopping-cart' : 'fa-comment'"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-sm font-medium text-gray-800 leading-snug" x-text="n.content"></p>
+                                                    <p class="text-[10px] text-gray-400 mt-1 font-bold uppercase" x-text="new Date(n.timestamp + 'Z').toLocaleString()"></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <template x-if="notifications.length === 0">
+                                        <div class="p-8 text-center text-gray-400 italic text-sm">No notifications yet</div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="role !== 'admin'">
+                        <button @click="currentTab = 'settings'" class="hover:text-green-600 transition p-2 hover:bg-green-50 rounded-lg" title="Settings"><i class="fas fa-cog text-lg"></i></button>
+                    </template>
+
+                    <template x-if="role === 'admin'">
+                        <button @click="currentTab = 'admin'" class="text-green-600 bg-green-50 px-3 py-1.5 rounded-lg font-bold border border-green-200 hover:bg-green-100 transition shadow-sm"><i class="fas fa-shield-alt mr-2"></i>Admin Area</button>
+                    </template>
+
+                    <div class="w-px h-6 bg-gray-300 mx-2"></div>
+                    <button @click="doLogout()" class="text-sm text-red-500 font-bold hover:text-red-700 transition flex items-center gap-2 hover:bg-red-50 px-3 py-2 rounded-lg">
+                        <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span>
+                    </button>
+                </div>
+            </nav>
+
+            <div class="max-w-7xl mx-auto flex w-full flex-1 gap-8 p-4 sm:p-6">
+                <!-- Sidebar for non-admin -->
+                <aside class="w-64 space-y-8 h-[calc(100vh-8rem)] sticky top-24 hidden lg:block" x-show="role !== 'admin' && (currentTab === 'homepage' || currentTab === 'farmerShop')">
+                    <div class="bg-white/80 backdrop-blur-md p-5 rounded-3xl shadow-sm border border-white">
+                        <h3 class="font-bold text-gray-400 text-xs uppercase mb-4 tracking-wider px-2">Categories</h3>
+                        <ul class="space-y-1">
+                            <li><button @click="setCategory('all')" :class="activeCategory === 'all' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-border-all w-5 text-center text-lg"></i> All Items</button></li>
+                            <li><button @click="setCategory('veggies')" :class="activeCategory === 'veggies' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-carrot w-5 text-center text-lg"></i> Vegetables</button></li>
+                            <li><button @click="setCategory('fruits')" :class="activeCategory === 'fruits' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-apple-alt w-5 text-center text-lg"></i> Fruits</button></li>
+                            <li><button @click="setCategory('livestock')" :class="activeCategory === 'livestock' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-drumstick-bite w-5 text-center text-lg"></i> Livestock</button></li>
+                        </ul>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area -->
+                <main class="flex-1 w-full max-w-full overflow-hidden pb-10">
+                    
+                    <!-- TAB: HOMEPAGE (MARKETPLACE) -->
+                    <div x-show="currentTab === 'homepage' && role !== 'admin'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
+                        <!-- ... (same as before) ... -->
+                        <div class="bg-white rounded-[2rem] p-8 sm:p-10 mb-8 border border-gray-100 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
+                            <div class="absolute top-0 right-0 w-64 h-64 bg-green-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+                            <div class="absolute top-0 right-32 w-64 h-64 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+                            <div class="relative z-10 max-w-xl">
+                                <h2 class="text-4xl sm:text-5xl font-black text-gray-800 tracking-tight leading-tight mb-4">
+                                    Fresh from the <span class="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-500">farm</span> to you.
+                                </h2>
+                                <p class="text-gray-500 text-lg font-medium mb-6">Support local agriculture by connecting directly with farmers in your area.</p>
+                                <div class="relative max-w-md">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <i class="fas fa-search text-gray-400"></i>
+                                    </div>
+                                    <input type="text" x-model="searchQuery" class="block w-full pl-11 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-900 focus:ring-2 focus:ring-green-500 sm:text-sm font-medium shadow-sm" placeholder="Search for farmers...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex overflow-x-auto gap-2 pb-4 mb-4 lg:hidden no-scrollbar">
+                            <button @click="setCategory('all')" :class="activeCategory === 'all' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">All Items</button>
+                            <button @click="setCategory('veggies')" :class="activeCategory === 'veggies' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">Vegetables</button>
+                            <button @click="setCategory('fruits')" :class="activeCategory === 'fruits' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">Fruits</button>
+                            <button @click="setCategory('livestock')" :class="activeCategory === 'livestock' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">Livestock</button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative min-h-[200px]">
+                            <template x-for="farmer in filteredFarmers()" :key="farmer.id">
+                                <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 group">
+                                    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left w-full sm:w-auto">
+                                        <div class="relative shrink-0">
+                                            <img :src="farmer.img" class="w-20 h-20 rounded-full object-cover shadow-md border-4 border-white group-hover:border-green-100 transition-colors">
+                                            <div class="absolute bottom-0 right-0 bg-green-500 w-5 h-5 rounded-full border-2 border-white shadow-sm"></div>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-extrabold text-xl text-gray-800 group-hover:text-green-600 transition-colors" x-text="farmer.name"></h4>
+                                            <div class="flex items-center justify-center sm:justify-start gap-3 mt-2">
+                                                <p class="text-sm text-yellow-600 font-black bg-yellow-50 border border-yellow-100 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                                                    <i class="fas fa-star"></i> <span x-text="farmer.rating"></span>
+                                                </p>
+                                                <span class="text-xs text-gray-600 font-bold uppercase tracking-wider px-3 py-1 bg-gray-100 rounded-lg" x-text="farmer.cat"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button @click="viewFarmer(farmer)" class="w-full sm:w-auto bg-green-50 text-green-700 hover:bg-green-600 hover:text-white border border-green-200 hover:border-transparent px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 shadow-sm shrink-0">
+                                        View Shop <i class="fas fa-arrow-right ml-1 opacity-50"></i>
+                                    </button>
+                                </div>
+                            </template>
+                            
+                            <div x-show="filteredFarmers().length === 0 && !isLoading" class="col-span-full text-center py-20 bg-white/50 backdrop-blur-sm rounded-3xl border border-dashed border-gray-300">
+                                <p class="text-gray-500 mt-2 font-medium">No farmers found.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: VIEW SPECIFIC FARMER -->
+                    <div x-show="currentTab === 'farmerShop'" x-transition:enter="transition ease-out duration-300">
+                        <!-- ... (same as before) ... -->
+                        <template x-if="selectedFarmer">
+                            <div>
+                                <button @click="currentTab = 'homepage'" class="mb-6 text-gray-500 hover:text-green-600 font-bold flex items-center gap-2 transition bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100 w-fit hover:shadow-md">
+                                    <i class="fas fa-arrow-left"></i> Back to Marketplace
+                                </button>
+                                
+                                <div class="bg-white rounded-[2rem] overflow-hidden shadow-md border border-gray-100 mb-10">
+                                    <div class="h-48 bg-[#8F9E8B] relative overflow-hidden">
+                                        <template x-if="selectedFarmer.banner_img">
+                                            <img :src="selectedFarmer.banner_img" class="absolute inset-0 w-full h-full object-cover">
+                                        </template>
+                                        <div class="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTIwIDBMNDAgMjBMMjAgNDBMMCAyMHpNOCAxMkwxMiA4TDE2IDEyTDEyIDE2em0yNCAwTDM2IDhMNDAgMTJMMzYgMTZ6bS0xMiA4TDI0IDE2TDI4IDIwTDI0IDI0em0xMiA4TDM2IDI0TDQwIDI4TDM2IDMyem0tMjQgMEwxMiAyNEwxNiAyOEwxMiAzMnoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMSIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+')]"></div>
+                                    </div>
+                                    <div class="px-8 pb-8 sm:px-10 sm:pb-10">
+                                        <div class="flex flex-col sm:flex-row gap-6 items-start">
+                                            <img :src="selectedFarmer.img" class="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl -mt-16 bg-white shrink-0 relative z-10">
+                                            <div class="flex-1 w-full flex flex-col md:flex-row md:justify-between md:items-start gap-4 pt-2 sm:pt-4">
+                                                <div>
+                                                    <h2 class="text-3xl sm:text-4xl font-black text-gray-800 tracking-tight" x-text="selectedFarmer.name"></h2>
+                                                    <template x-if="selectedFarmer.is_open === 0 || selectedFarmer.is_open === false">
+                                                        <span class="inline-block mt-2 bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border border-red-200"><i class="fas fa-store-slash"></i> Currently Closed</span>
+                                                    </template>
+                                                    <template x-if="selectedFarmer.description">
+                                                        <p class="mt-3 text-gray-600 font-medium leading-relaxed max-w-2xl" x-text="selectedFarmer.description"></p>
+                                                    </template>
+                                                    <div class="flex items-center gap-3 mt-3 flex-wrap">
+                                                        <p class="text-yellow-600 font-black bg-yellow-50 border border-yellow-200 px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-sm">
+                                                            <i class="fas fa-star"></i> <span x-text="selectedFarmer.rating"></span> Rating
+                                                        </p>
+                                                        <span class="text-sm text-gray-600 font-bold uppercase tracking-wider px-3 py-1 bg-gray-100 rounded-lg border border-gray-200" x-text="selectedFarmer.cat"></span>
+                                                    </div>
+                                                </div>
+                                                <button class="bg-gray-100 text-gray-700 hover:bg-[#8F9E8B] hover:text-white px-6 py-3 rounded-xl font-bold transition-all shadow-sm border border-gray-200 hover:border-transparent flex items-center gap-2">
+                                                    <i class="fas fa-heart"></i> Follow Shop
+                                                </button>
+                                                <template x-if="role === 'consumer'">
+                                                    <button @click="startChatWithFarmer(selectedFarmer)" class="bg-[#8F9E8B] text-white hover:bg-[#7A8B76] px-6 py-3 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2">
+                                                        <i class="fas fa-comment-dots"></i> Message Farmer
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between mb-6">
+                                    <h3 class="text-2xl font-bold text-gray-800">Available Products</h3>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <template x-for="product in getFarmerProducts(selectedFarmer.id)" :key="product.id">
+                                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col">
+                                            <template x-if="!product.img">
+                                                <div class="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center mb-5 text-[#8F9E8B] border border-gray-200 shadow-inner text-xl">
+                                                    <i class="fas" :class="product.cat === 'veggies' ? 'fa-carrot' : (product.cat === 'fruits' ? 'fa-apple-alt' : 'fa-drumstick-bite')"></i>
+                                                </div>
+                                            </template>
+                                            <template x-if="product.img">
+                                                <img :src="product.img" class="w-full h-40 object-cover rounded-2xl mb-4 shadow-sm border border-gray-100">
+                                            </template>
+                                            <h4 class="font-extrabold text-xl text-gray-800" x-text="product.name"></h4>
+                                            <div class="flex items-center gap-2 mb-4 mt-1.5 flex-wrap">
+                                                <p class="text-xs text-[#8F9E8B] font-bold uppercase tracking-widest bg-gray-50 border border-gray-200 inline-block px-2 py-0.5 rounded" x-text="product.cat"></p>
+                                                <template x-if="product.stock <= 0">
+                                                    <span class="text-xs text-red-600 font-bold uppercase tracking-widest bg-red-50 border border-red-200 inline-block px-2 py-0.5 rounded">Sold Out</span>
+                                                </template>
+                                                <template x-if="product.stock > 0 && product.stock <= 5">
+                                                    <span class="text-xs text-orange-600 font-bold uppercase tracking-widest bg-orange-50 border border-orange-200 inline-block px-2 py-0.5 rounded">🔥 Fast Selling (Stock: <span x-text="product.stock"></span>)</span>
+                                                </template>
+                                                <template x-if="product.stock > 5">
+                                                    <span class="text-xs text-[#8F9E8B] font-bold uppercase tracking-widest bg-gray-50 border border-gray-200 inline-block px-2 py-0.5 rounded">Stock: <span x-text="product.stock"></span></span>
+                                                </template>
+                                            </div>
+                                            <div class="mt-auto pt-4 border-t border-gray-100">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="font-black text-gray-800 text-2xl" x-text="'₱' + product.price"></span>
+                                                    <template x-if="role === 'consumer'">
+                                                        <button @click="openCheckout(product)" :disabled="selectedFarmer.is_open === 0 || selectedFarmer.is_open === false || product.stock <= 0" class="text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition-all text-sm" :class="(selectedFarmer.is_open === 0 || selectedFarmer.is_open === false || product.stock <= 0) ? 'bg-gray-300 cursor-not-allowed text-gray-500' : 'bg-[#8F9E8B] hover:bg-[#7A8B76]'">
+                                                            <span x-text="(selectedFarmer.is_open === 0 || selectedFarmer.is_open === false) ? 'Closed' : (product.stock <= 0 ? 'Sold Out' : 'Buy Now')"></span>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- TAB: YOUR PAGE (The Farmer Dashboard) -->
+                    <div x-show="currentTab === 'yourPage'" x-transition:enter="transition ease-out duration-300">
+                        
+                        <div class="bg-white rounded-[2rem] border border-gray-100 shadow-md p-8 mb-8 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-[#8F9E8B] opacity-10"></div>
+                            <div class="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                                <div class="flex items-center gap-6">
+                                    <img :src="(currentUser && currentUser.shop_img) || 'https://ui-avatars.com/api/?name='+(currentUser ? currentUser.shop_name : 'Shop')" class="w-20 h-20 rounded-full object-cover shadow-sm border-4 border-white bg-white">
+                                    <div>
+                                        <h2 class="text-3xl font-black text-gray-800" x-text="currentUser ? currentUser.shop_name : 'Your Shop'"></h2>
+                                        <p class="text-[#8F9E8B] font-bold mt-1 text-sm tracking-widest uppercase">Farmer Dashboard</p>
+                                    </div>
+                                </div>
+                                <button @click="showShopSettings = !showShopSettings" class="bg-white text-[#8F9E8B] border border-[#8F9E8B] hover:bg-[#8F9E8B] hover:text-white px-6 py-3 rounded-xl font-bold transition-all shadow-sm flex items-center gap-2">
+                                    <i class="fas fa-cog"></i> Shop Settings
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div x-show="showShopSettings" x-transition class="bg-white rounded-[2rem] border border-gray-100 shadow-md p-8 mb-8">
+                            <h3 class="text-2xl font-black text-gray-800 mb-6">Shop Profile & Settings</h3>
+                            <form @submit.prevent="updateShopSettings()" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                
+                                <div class="col-span-1 md:col-span-2 flex items-center gap-6 mb-2">
+                                    <label class="cursor-pointer relative group block w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-sm shrink-0">
+                                        <img :src="shopImgPreview || (currentUser && currentUser.shop_img) || 'https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=200'" class="w-full h-full object-cover">
+                                        <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <i class="fas fa-camera text-white text-xl"></i>
+                                        </div>
+                                        <input type="file" class="hidden" accept="image/*" @change="handleShopImgUpload">
+                                    </label>
+                                    <div>
+                                        <p class="font-bold text-gray-800 text-lg">Shop Logo / Avatar</p>
+                                        <p class="text-sm text-gray-500">Click the circle to upload a new shop logo.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Shop Banner Cover</label>
+                                    <label class="cursor-pointer relative group block w-full h-40 rounded-2xl overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 hover:border-green-400 transition-colors">
+                                        <template x-if="shopBannerPreview || (currentUser && currentUser.shop_banner)">
+                                            <img :src="shopBannerPreview || currentUser.shop_banner" class="w-full h-full object-cover">
+                                        </template>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 group-hover:text-[#8F9E8B]" :class="(shopBannerPreview || (currentUser && currentUser.shop_banner)) ? 'opacity-0 bg-black/50 group-hover:opacity-100 text-white hover:text-white transition-opacity' : ''">
+                                            <i class="fas fa-image text-3xl mb-2"></i>
+                                            <span class="font-bold text-sm">Click to upload banner</span>
+                                        </div>
+                                        <input type="file" class="hidden" accept="image/*" @change="handleShopBannerUpload">
+                                    </label>
+                                </div>
+
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">About The Farm (Description)</label>
+                                    <textarea x-model="shopSettingsForm.description" rows="3" class="block w-full rounded-xl p-3 border bg-gray-50 focus:ring-2 focus:ring-green-500" placeholder="Tell customers about your farm..."></textarea>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Primary Category</label>
+                                    <select x-model="shopSettingsForm.cat" class="block w-full rounded-xl p-3 border bg-gray-50">
+                                        <option value="veggies">Vegetables</option>
+                                        <option value="fruits">Fruits</option>
+                                        <option value="livestock">Livestock</option>
+                                        <option value="all">All Items</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <label class="block text-sm font-bold text-gray-700 mb-1">Shop Status</label>
+                                        <p class="text-xs text-gray-500">Turn off to temporarily close your shop</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" x-model="shopSettingsForm.is_open" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                        <span class="ml-3 text-sm font-bold" :class="shopSettingsForm.is_open ? 'text-green-600' : 'text-gray-500'" x-text="shopSettingsForm.is_open ? 'Open' : 'Closed'"></span>
+                                    </label>
+                                </div>
+
+                                <div class="col-span-1 md:col-span-2 pt-4 border-t border-gray-100">
+                                    <button type="submit" :disabled="authLoading" class="bg-gray-800 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all">
+                                        <i x-show="authLoading" class="fas fa-spinner fa-spin"></i>
+                                        <span>Save Shop Settings</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="bg-white rounded-[2rem] border border-gray-100 shadow-md overflow-hidden mb-8">
+                            <div class="p-8 border-b border-gray-100 bg-gradient-to-br from-green-50 to-emerald-50 relative overflow-hidden">
+                                <i class="fas fa-leaf absolute -right-10 -bottom-10 text-9xl text-green-500 opacity-5 pointer-events-none"></i>
+                                <div class="relative z-10 flex items-center justify-between w-full">
+                                    <h2 class="text-3xl font-black text-gray-800 tracking-tight">My Digital Stall</h2>
+                                    <button @click="showShopSettings = !showShopSettings" class="text-gray-600 hover:text-green-600 bg-white/60 hover:bg-white rounded-full w-10 h-10 flex items-center justify-center transition-all shadow-sm">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-0 overflow-x-auto">
+                                <table class="w-full text-left whitespace-nowrap">
+                                    <thead class="bg-gray-50 text-gray-400 text-xs uppercase tracking-widest font-bold">
+                                        <tr><th class="px-8 py-5">Product Details</th><th class="px-8 py-5">Stock</th><th class="px-8 py-5">Price</th><th class="px-8 py-5 text-right">Actions</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <template x-for="item in myProducts.filter(p => p.farmer_id === currentUser.farmer_id)" :key="item.id">
+                                            <tr class="hover:bg-gray-50 transition-colors">
+                                                <td class="px-8 py-5 flex items-center gap-4">
+                                                    <template x-if="item.img">
+                                                        <img :src="item.img" class="w-12 h-12 rounded-xl object-cover shadow-sm border border-gray-200">
+                                                    </template>
+                                                    <template x-if="!item.img">
+                                                        <div class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200">
+                                                            <i class="fas fa-image"></i>
+                                                        </div>
+                                                    </template>
+                                                    <div>
+                                                        <div class="font-bold text-gray-800 text-lg" x-text="item.name"></div>
+                                                        <div class="text-xs text-green-600 font-bold mt-1 uppercase tracking-wider bg-green-50 inline-block px-2 py-0.5 rounded" x-text="item.cat"></div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-8 py-5 font-bold text-gray-600" x-text="item.stock"></td>
+                                                <td class="px-8 py-5"><span class="font-black text-gray-700" x-text="'₱' + item.price"></span></td>
+                                                <td class="px-8 py-5 text-right space-x-2">
+                                                    <button @click="openEditProductModal(item)" class="text-gray-500 hover:text-white hover:bg-gray-500 bg-gray-100 w-10 h-10 rounded-xl transition-all"><i class="fas fa-edit"></i></button>
+                                                    <button @click="deleteProduct(item.id)" class="text-red-400 hover:text-white hover:bg-red-500 bg-red-50 w-10 h-10 rounded-xl transition-all ml-auto"><i class="fas fa-trash"></i></button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="p-8 bg-gray-50 border-t border-gray-100">
+                                <button @click="openAddProductModal()" class="w-full border-2 border-dashed border-gray-300 bg-white py-5 rounded-2xl text-gray-500 hover:border-[#8F9E8B] hover:text-[#8F9E8B] hover:bg-[#F4F6F4] transition-all font-bold">
+                                    <i class="fas fa-plus-circle text-xl mr-2"></i> Add a new product
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: SETTINGS (Payments & Profile) -->
+                    <div x-show="currentTab === 'settings'" x-transition:enter="transition ease-out duration-300">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl">
+                                                        <!-- Profile Settings -->
+                            <div class="bg-white rounded-[2rem] border border-gray-100 shadow-md p-8 col-span-1 md:col-span-2">
+                                <h2 class="text-3xl font-black text-gray-800 mb-6">Profile Configuration</h2>
+                                <form @submit.prevent="updateProfile()" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="col-span-1 md:col-span-2 flex items-center gap-6">
+                                        <label class="cursor-pointer relative group block w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-sm">
+                                            <img :src="profilePreview || (currentUser && currentUser.profile_img) || 'https://ui-avatars.com/api/?name='+(currentUser ? currentUser.full_name : 'User')" class="w-full h-full object-cover">
+                                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <i class="fas fa-camera text-white text-xl"></i>
+                                            </div>
+                                            <input type="file" class="hidden" accept="image/*" @change="handleProfileUpload">
+                                        </label>
+                                        <div>
+                                            <p class="font-bold text-gray-800 text-lg">Profile Picture</p>
+                                            <p class="text-sm text-gray-500">Click the image to upload a new one. (Max 5MB)</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
+                                        <input type="text" x-model="profileForm.full_name" required class="block w-full rounded-xl p-3 border bg-gray-50">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Contact Number/Email</label>
+                                        <input type="text" x-model="profileForm.contact" required class="block w-full rounded-xl p-3 border bg-gray-50">
+                                    </div>
+                                    <div class="col-span-1 md:col-span-2">
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Complete Address</label>
+                                        <input type="text" x-model="profileForm.address" class="block w-full rounded-xl p-3 border bg-gray-50">
+                                    </div>
+                                    
+                                    <div class="col-span-1 md:col-span-2">
+                                        <button type="submit" :disabled="authLoading" class="bg-gradient-to-r from-green-600 to-emerald-500 text-white px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all w-full sm:w-auto">
+                                            <i x-show="authLoading" class="fas fa-spinner fa-spin"></i>
+                                            <span>Save Profile Updates</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Payment Settings -->
+                            <div class="bg-white rounded-[2rem] border border-gray-100 shadow-md p-8">
+                                <h2 class="text-3xl font-black text-gray-800 mb-6">Payment Methods</h2>
+                                <div class="space-y-4 mb-8">
+                                    <template x-for="method in paymentMethods" :key="method.id">
+                                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-gray-50">
+                                            <div class="flex items-center gap-4">
+                                                <i class="fas fa-credit-card text-xl text-gray-500"></i>
+                                                <div>
+                                                    <p class="font-bold text-gray-800 uppercase text-sm" x-text="method.type"></p>
+                                                    <p class="text-gray-500 font-mono" x-text="'**** **** ' + method.details.slice(-4)"></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                                <h3 class="text-lg font-bold mb-4">Add New Method</h3>
+                                <form @submit.prevent="savePaymentMethod()" class="space-y-4">
+                                    <select x-model="newPayment.type" class="block w-full rounded-xl p-3 border"><option value="gcash">GCash</option><option value="card">Card</option></select>
+                                    <input type="text" x-model="newPayment.details" required class="block w-full rounded-xl p-3 border" placeholder="Account Number">
+                                    <button type="submit" class="bg-gray-800 text-white px-6 py-3 rounded-xl font-bold w-full">Save Payment Method</button>
+                                </form>
+                            </div>
+
+                            <!-- Security Settings -->
+                            <div class="bg-white rounded-[2rem] border border-gray-100 shadow-md p-8 h-fit">
+                                <h2 class="text-3xl font-black text-gray-800 mb-6">Security</h2>
+                                <h3 class="text-lg font-bold mb-4">Change Password</h3>
+                                <form @submit.prevent="changePassword()" class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Current Password</label>
+                                        <input type="password" x-model="passwordForm.current_password" required class="block w-full rounded-xl p-3 border bg-gray-50">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">New Password</label>
+                                        <input type="password" x-model="passwordForm.new_password" required class="block w-full rounded-xl p-3 border bg-gray-50">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Confirm New Password</label>
+                                        <input type="password" x-model="passwordForm.confirm_password" required class="block w-full rounded-xl p-3 border bg-gray-50">
+                                    </div>
+                                    <button type="submit" :disabled="authLoading" class="bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-3 rounded-xl font-bold w-full flex justify-center items-center gap-2">
+                                        <i x-show="authLoading" class="fas fa-spinner fa-spin"></i>
+                                        <span>Update Password</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: MESSAGES -->
+                    <div x-show="currentTab === 'messages' && role !== 'admin'" x-transition:enter="transition ease-out duration-300">
+                        <div class="bg-white rounded-[2rem] border border-gray-100 shadow-md overflow-hidden mb-8 h-[calc(100vh-12rem)] flex">
+                            <!-- Sidebar (Contacts) -->
+                            <div class="w-1/3 border-r border-gray-100 flex flex-col bg-gray-50">
+                                <div class="p-6 border-b border-gray-200 bg-white">
+                                    <h2 class="text-2xl font-black text-gray-800">Messages</h2>
+                                </div>
+                                <div class="flex-1 overflow-y-auto">
+                                    <template x-for="contact in chatContacts" :key="contact.id">
+                                        <button @click="openChat(contact)" class="w-full text-left p-4 border-b border-gray-100 hover:bg-white transition-all flex items-center gap-4" :class="activeChatUser && activeChatUser.id === contact.id ? 'bg-white border-l-4 border-l-green-500' : 'border-l-4 border-transparent'">
+                                            <img :src="contact.profile_img || (contact.role === 'farmer' ? contact.shop_img : 'https://ui-avatars.com/api/?name='+contact.full_name)" class="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-200">
+                                            <div class="flex-1 overflow-hidden">
+                                                <h4 class="font-bold text-gray-800 truncate" x-text="contact.role === 'farmer' ? contact.shop_name : contact.full_name"></h4>
+                                                <div class="flex justify-between items-center mt-0.5">
+                                                    <p class="text-xs text-gray-500 font-medium uppercase" x-text="contact.role"></p>
+                                                    <template x-if="contact.unread_count > 0">
+                                                        <span class="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full" x-text="contact.unread_count"></span>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </template>
+                                    <div x-show="chatContacts.length === 0" class="p-8 text-center text-gray-500 font-medium text-sm">
+                                        No conversations yet.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Main Chat Area -->
+                            <div class="flex-1 flex flex-col bg-white">
+                                <template x-if="activeChatUser">
+                                    <div class="flex-1 flex flex-col h-full">
+                                        <!-- Chat Header -->
+                                        <div class="p-5 border-b border-gray-100 flex items-center gap-4 bg-white z-10 shadow-sm">
+                                            <img :src="activeChatUser.profile_img || (activeChatUser.role === 'farmer' ? activeChatUser.shop_img : 'https://ui-avatars.com/api/?name='+activeChatUser.full_name)" class="w-10 h-10 rounded-full object-cover border border-gray-200">
+                                            <div>
+                                                <h3 class="font-bold text-lg text-gray-800 leading-tight" x-text="activeChatUser.role === 'farmer' ? activeChatUser.shop_name : activeChatUser.full_name"></h3>
+                                                <p class="text-xs text-green-600 font-bold uppercase tracking-widest" x-text="activeChatUser.role"></p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Messages List -->
+                                        <div class="flex-1 p-6 overflow-y-auto flex flex-col gap-4 bg-gray-50/50" id="chatMessagesContainer">
+                                            <template x-for="msg in chatMessages" :key="msg.id">
+                                                <div class="flex w-full" :class="msg.sender_id === currentUser.id ? 'justify-end' : 'justify-start'">
+                                                    <div class="max-w-[75%] rounded-2xl px-5 py-3 shadow-sm" :class="msg.sender_id === currentUser.id ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-br-none' : 'bg-white border border-gray-100 text-gray-800 rounded-bl-none'">
+                                                        <p class="text-sm font-medium leading-relaxed whitespace-pre-wrap" x-text="msg.content"></p>
+                                                        <span class="text-[10px] mt-1.5 block opacity-70 font-bold text-right" x-text="new Date(msg.timestamp + 'Z').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})"></span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <div x-show="chatMessages.length === 0" class="m-auto text-center text-gray-400 font-medium py-10">
+                                                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-gray-100">
+                                                    <i class="fas fa-hand-sparkles text-2xl text-yellow-400"></i>
+                                                </div>
+                                                Say hello to <span x-text="activeChatUser.role === 'farmer' ? activeChatUser.shop_name : activeChatUser.full_name"></span>!
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Input Area -->
+                                        <form @submit.prevent="sendMessage()" class="p-4 bg-white border-t border-gray-100 flex gap-3 items-end">
+                                            <textarea x-model="newMessage" @keydown.enter.prevent="sendMessage()" rows="1" placeholder="Type a message... (Press Enter to send)" class="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all font-medium text-gray-700 resize-none overflow-hidden min-h-[48px]"></textarea>
+                                            <button type="submit" :disabled="!newMessage.trim()" class="bg-green-600 hover:bg-green-700 text-white rounded-2xl w-12 h-12 flex items-center justify-center font-bold transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed shrink-0">
+                                                <i class="fas fa-paper-plane"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </template>
+                                
+                                <template x-if="!activeChatUser">
+                                    <div class="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
+                                        <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-4 border-2 border-dashed border-gray-200">
+                                            <i class="fas fa-comments text-4xl text-gray-300"></i>
+                                        </div>
+                                        <p class="font-bold text-xl text-gray-500 mb-2">Your Messages</p>
+                                        <p class="text-sm text-center max-w-sm leading-relaxed">Select a conversation from the sidebar to continue chatting, or visit a farmer's shop to start a new inquiry.</p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: ADMIN DASHBOARD -->
+                    <div x-show="currentTab === 'admin'" x-transition:enter="transition ease-out duration-300">
+                        <div class="bg-white rounded-[2rem] border border-gray-100 shadow-md overflow-hidden mb-8">
+                            <div class="p-8 border-b border-gray-100 bg-gradient-to-br from-gray-800 to-gray-900 text-white">
+                                <h2 class="text-3xl font-black tracking-tight"><i class="fas fa-shield-alt mr-2 text-green-400"></i> Admin Dashboard</h2>
+                                <p class="text-gray-400 mt-2 font-medium">Manage platform users, view all transactions, and adjust settings.</p>
+                            </div>
+                            
+                            <!-- Admin Tabs -->
+                            <div class="flex border-b border-gray-200 px-8 bg-gray-50">
+                                <button @click="adminSubTab = 'users'" :class="adminSubTab === 'users' ? 'border-b-2 border-green-500 text-green-700 font-bold' : 'text-gray-500 font-medium'" class="px-6 py-4 hover:text-green-600 transition">User Management</button>
+                                <button @click="adminSubTab = 'orders'" :class="adminSubTab === 'orders' ? 'border-b-2 border-green-500 text-green-700 font-bold' : 'text-gray-500 font-medium'" class="px-6 py-4 hover:text-green-600 transition">All Orders</button>
+                                <button @click="adminSubTab = 'settings'" :class="adminSubTab === 'settings' ? 'border-b-2 border-green-500 text-green-700 font-bold' : 'text-gray-500 font-medium'" class="px-6 py-4 hover:text-green-600 transition">Security / Settings</button>
+                            </div>
+
+                            <div class="p-0 overflow-x-auto" x-show="adminSubTab === 'users'">
+                                <table class="w-full text-left whitespace-nowrap">
+                                    <thead class="bg-white text-gray-400 text-xs uppercase tracking-widest font-bold border-b border-gray-100">
+                                        <tr><th class="px-8 py-5">ID</th><th class="px-8 py-5">Name</th><th class="px-8 py-5">Role</th><th class="px-8 py-5">Contact</th><th class="px-8 py-5 text-right">Action</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <template x-for="u in adminUsers" :key="u.id">
+                                            <tr class="hover:bg-gray-50 transition">
+                                                <td class="px-8 py-4 font-mono text-gray-500" x-text="u.id"></td>
+                                                <td class="px-8 py-4 font-bold text-gray-800" x-text="u.full_name"></td>
+                                                <td class="px-8 py-4"><span class="px-3 py-1 bg-gray-100 rounded-full text-xs font-bold uppercase tracking-wide text-gray-600" x-text="u.role"></span></td>
+                                                <td class="px-8 py-4 text-gray-600" x-text="u.contact"></td>
+                                                <td class="px-8 py-4 text-right">
+                                                    <button @click="deleteAdminUser(u.id, false)" class="text-gray-500 hover:text-white hover:bg-gray-500 px-3 py-1.5 rounded-lg font-bold border border-gray-200 hover:border-transparent transition text-xs mr-2">Delete Only</button>
+                                                    <button @click="deleteAdminUser(u.id, true)" class="text-red-500 hover:text-white hover:bg-red-500 px-3 py-1.5 rounded-lg font-bold border border-red-200 hover:border-transparent transition text-xs">Ban & Delete</button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                        <tr x-show="adminUsers.length === 0"><td colspan="5" class="px-8 py-10 text-center text-gray-500">No users found.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="p-0 overflow-x-auto" x-show="adminSubTab === 'orders'">
+                                <table class="w-full text-left whitespace-nowrap">
+                                    <thead class="bg-white text-gray-400 text-xs uppercase tracking-widest font-bold border-b border-gray-100">
+                                        <tr><th class="px-8 py-5">Order ID</th><th class="px-8 py-5">Product</th><th class="px-8 py-5">Qty</th><th class="px-8 py-5">Farmer</th><th class="px-8 py-5">Consumer</th><th class="px-8 py-5 text-right">Price</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <template x-for="o in adminOrders" :key="o.id">
+                                            <tr class="hover:bg-gray-50 transition">
+                                                <td class="px-8 py-4 font-mono text-gray-500" x-text="'#'+o.id"></td>
+                                                <td class="px-8 py-4 font-bold text-gray-800" x-text="o.product_name"></td>
+                                                <td class="px-8 py-4 font-bold text-gray-600" x-text="o.quantity || 1"></td>
+                                                <td class="px-8 py-4 text-green-700 font-medium" x-text="o.farmer_name"></td>
+                                                <td class="px-8 py-4 text-blue-700 font-medium" x-text="o.consumer_name"></td>
+                                                <td class="px-8 py-4 text-right font-black text-gray-800" x-text="'₱' + o.price"></td>
+                                            </tr>
+                                        </template>
+                                        <tr x-show="adminOrders.length === 0"><td colspan="5" class="px-8 py-10 text-center text-gray-500">No orders yet.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Admin Security Settings -->
+                            <div class="p-8" x-show="adminSubTab === 'settings'">
+                                <div class="max-w-md">
+                                    <h3 class="text-xl font-bold mb-4">Change Admin Password</h3>
+                                    <form @submit.prevent="changePassword()" class="space-y-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">Current Password</label>
+                                            <input type="password" x-model="passwordForm.current_password" required class="block w-full rounded-xl p-3 border bg-gray-50">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">New Password</label>
+                                            <input type="password" x-model="passwordForm.new_password" required class="block w-full rounded-xl p-3 border bg-gray-50">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">Confirm New Password</label>
+                                            <input type="password" x-model="passwordForm.confirm_password" required class="block w-full rounded-xl p-3 border bg-gray-50">
+                                        </div>
+                                        <button type="submit" :disabled="authLoading" class="bg-gray-800 text-white px-6 py-3 rounded-xl font-bold w-full flex justify-center items-center gap-2">
+                                            <i x-show="authLoading" class="fas fa-spinner fa-spin"></i>
+                                            <span>Update Password</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </main>
+            </div>
+        </div>
+    </template>
+
+    <!-- ADD PRODUCT MODAL -->
+    <!-- ... same ... -->
+    <div x-show="isModalOpen" class="fixed inset-0 z-[150] flex items-center justify-center bg-gray-900 bg-opacity-60 backdrop-blur-sm p-4" style="display:none;">
+        <div class="bg-white rounded-3xl overflow-hidden shadow-2xl w-full max-w-lg">
+            <div class="p-8">
+                <h3 class="text-xl font-bold mb-4" x-text="isEditingProduct ? 'Edit Crop' : 'Add New Crop'"></h3>
+                <div class="space-y-4">
+                    <div class="flex items-center gap-4">
+                        <label class="cursor-pointer relative group block w-20 h-20 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 hover:border-green-400 shrink-0">
+                            <template x-if="newProductImgPreview">
+                                <img :src="newProductImgPreview" class="w-full h-full object-cover">
+                            </template>
+                            <div class="absolute inset-0 flex items-center justify-center text-gray-400 group-hover:text-green-500" :class="newProductImgPreview ? 'opacity-0 hover:opacity-100 bg-black/50 text-white' : ''">
+                                <i class="fas fa-camera text-xl"></i>
+                            </div>
+                            <input type="file" class="hidden" accept="image/*" @change="handleNewProductImgUpload">
+                        </label>
+                        <div class="flex-1 space-y-4">
+                            <input type="text" x-model="newProduct.name" class="block w-full rounded-xl p-3 border bg-gray-50" placeholder="Product Name">
+                            <input type="text" x-model="newProduct.price" class="block w-full rounded-xl p-3 border bg-gray-50" placeholder="Price (₱ e.g. 5.00/kg)">
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <select x-model="newProduct.cat" class="block w-full rounded-xl p-3 border bg-gray-50 flex-1">
+                            <option value="veggies">Vegetables</option>
+                            <option value="fruits">Fruits</option>
+                            <option value="livestock">Livestock</option>
+                        </select>
+                        <input type="number" x-model="newProduct.stock" min="0" class="block w-32 rounded-xl p-3 border bg-gray-50" placeholder="Stock Qty">
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-8 py-4 flex flex-row-reverse gap-3">
+                <button type="button" @click="submitProduct()" class="px-6 py-3 bg-green-600 text-white rounded-xl font-bold" x-text="isEditingProduct ? 'Save Changes' : 'Add'"></button>
+                <button type="button" @click="closeProductModal()" class="px-6 py-3 bg-white border text-gray-700 rounded-xl font-bold">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHECKOUT MODAL -->
+    <!-- ... same ... -->
+    <div x-show="isCheckoutModalOpen" class="fixed inset-0 z-[150] flex items-center justify-center bg-gray-900 bg-opacity-60 backdrop-blur-sm p-4" style="display:none;">
+        <div class="bg-white rounded-3xl overflow-hidden shadow-2xl w-full max-w-md">
+            <div class="p-8">
+                <h3 class="text-2xl font-black mb-6">Checkout</h3>
+                
+                <template x-if="selectedProductToBuy">
+                    <div class="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-gray-800" x-text="selectedProductToBuy.name"></p>
+                            <p class="text-sm text-gray-500" x-text="'₱' + selectedProductToBuy.price"></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs font-bold text-gray-500 uppercase">Qty</label>
+                            <input type="number" x-model="checkoutQuantity" min="1" :max="selectedProductToBuy.stock" class="w-20 p-2 rounded-lg border text-center font-bold">
+                        </div>
+                    </div>
+                </template>
+
+                <div class="mb-4">
+                    <p class="text-sm font-bold text-gray-500 uppercase mb-2">Payment Method</p>
+                    
+                    <div class="flex gap-2 mb-4 bg-gray-100 p-1 rounded-xl">
+                        <button @click="checkoutPaymentMode = 'saved'" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all" :class="checkoutPaymentMode === 'saved' ? 'bg-white shadow-sm text-green-700' : 'text-gray-500 hover:text-gray-700'">Saved</button>
+                        <button @click="checkoutPaymentMode = 'new'" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all" :class="checkoutPaymentMode === 'new' ? 'bg-white shadow-sm text-green-700' : 'text-gray-500 hover:text-gray-700'">Enter New</button>
+                    </div>
+
+                    <div x-show="checkoutPaymentMode === 'saved'" class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                        <template x-for="method in paymentMethods" :key="method.id">
+                            <label class="flex items-center p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition" :class="selectedPaymentId === method.id ? 'border-green-500 bg-green-50' : 'border-gray-200'">
+                                <input type="radio" x-model="selectedPaymentId" :value="method.id" class="mr-3 text-green-600 focus:ring-green-500">
+                                <span class="font-medium text-sm" x-text="method.type.toUpperCase() + ' (****' + method.details.slice(-4) + ')'"></span>
+                            </label>
+                        </template>
+                        <div x-show="paymentMethods.length === 0" class="text-center p-4 text-sm text-gray-500">
+                            No saved payment methods.
+                        </div>
+                    </div>
+
+                    <div x-show="checkoutPaymentMode === 'new'" class="space-y-3">
+                        <select x-model="checkoutNewPayment.type" class="block w-full rounded-xl p-3 border border-gray-200 bg-white shadow-sm text-sm">
+                            <option value="gcash">GCash</option>
+                            <option value="card">Credit/Debit Card</option>
+                            <option value="cod">Cash on Delivery</option>
+                        </select>
+                        <input x-show="checkoutNewPayment.type !== 'cod'" type="text" x-model="checkoutNewPayment.details" class="block w-full rounded-xl p-3 border border-gray-200 bg-white shadow-sm text-sm" placeholder="Account / Card Number">
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-8 py-4 flex flex-row-reverse gap-3">
+                <button type="button" @click="confirmCheckout()" class="px-6 py-3 bg-green-600 text-white rounded-xl font-bold">Pay</button>
+                <button type="button" @click="isCheckoutModalOpen = false" class="px-6 py-3 bg-white border text-gray-700 rounded-xl font-bold">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function marketApp() {
+            return {
+                isAppLoading: true,
+                isLoggedIn: false,
+                role: null,
+                currentUser: null,
+                
+                authMode: 'login',
+                authLoading: false,
+                authForm: { full_name: '', contact: '', address: '', password: '', role: 'consumer', shop_name: '', remember: false },
+                profileForm: { full_name: '', contact: '', address: '', shop_name: '' },
+                profilePreview: null,
+                profileFile: null,
+                passwordForm: { current_password: '', new_password: '', confirm_password: '' },
+                
+                shopSettingsForm: { description: '', cat: 'veggies', is_open: true },
+                showShopSettings: false,
+                shopBannerPreview: null,
+                shopBannerFile: null,
+                shopImgPreview: null,
+                shopImgFile: null,
+
+                currentTab: 'homepage',
+                activeCategory: 'all',
+                searchQuery: '',
+                isLoading: false,
+
+                adminSubTab: 'users',
+                adminUsers: [],
+                adminOrders: [],
+
+                isModalOpen: false,
+                isCheckoutModalOpen: false,
+                selectedProductToBuy: null,
+                selectedPaymentId: null,
+                checkoutQuantity: 1,
+                checkoutPaymentMode: 'saved',
+                checkoutNewPayment: { type: 'gcash', details: '' },
+
+                chatContacts: [],
+                activeChatUser: null,
+                chatMessages: [],
+                newMessage: '',
+                chatPollingInterval: null,
+                
+                notifications: [],
+                notificationPollingInterval: null,
+
+                newProduct: { name: '', price: '', cat: 'veggies', stock: 0 },
+                newProductImgFile: null,
+                newProductImgPreview: null,
+                isEditingProduct: false,
+                editingProductId: null,
+
+                newPayment: { type: 'gcash', details: '' },
+
+                showToast: false,
+                toastMessage: '',
+                toastType: 'success',
+
+                selectedFarmer: null,
+                myProducts: [],
+                farmers: [],
+                paymentMethods: [],
+
+                async init() {
+                    this.$watch('currentTab', value => {
+                        if (value !== 'messages' && this.chatPollingInterval) {
+                            clearInterval(this.chatPollingInterval);
+                            this.chatPollingInterval = null;
+                        } else if (value === 'messages' && this.activeChatUser && !this.chatPollingInterval) {
+                            this.chatPollingInterval = setInterval(() => this.fetchChatMessages(false), 3000);
+                        }
+                    });
+
+                    const savedContact = localStorage.getItem('agri_saved_contact');
+                    if (savedContact) {
+                        this.authForm.contact = savedContact;
+                        this.authForm.remember = true;
+                    }
+                    await this.checkSession();
+                    if (this.isLoggedIn) {
+                        await this.loadData();
+                        this.notificationPollingInterval = setInterval(() => {
+                            this.fetchNotifications(false);
+                            this.fetchChatContacts();
+                        }, 5000);
+                    }
+                    this.isAppLoading = false;
+                },
+
+                async checkSession() {
+                    try {
+                        const res = await fetch('/api/me');
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.currentUser = data.user;
+                            this.profileForm.full_name = data.user.full_name || '';
+                            this.profileForm.contact = data.user.contact || '';
+                            this.profileForm.address = data.user.address || '';
+                            if (this.role === 'farmer') {
+                                this.shopSettingsForm.description = data.user.shop_description || '';
+                                this.shopSettingsForm.cat = data.user.shop_cat || 'veggies';
+                                this.shopSettingsForm.is_open = data.user.shop_is_open !== false;
+                                this.shopBannerPreview = data.user.shop_banner;
+                                this.shopImgPreview = data.user.shop_img;
+                            }
+                            this.role = data.user.role;
+                            this.isLoggedIn = true;
+                            if (this.role === 'admin') this.currentTab = 'admin';
+                        } else {
+                            this.isLoggedIn = false;
+                        }
+                    } catch (e) { this.isLoggedIn = false; }
+                },
+
+                async doLogin() {
+                    this.authLoading = true;
+                    try {
+                        const res = await fetch('/api/login', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({contact: this.authForm.contact, password: this.authForm.password, remember: this.authForm.remember})
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            if (this.authForm.remember) {
+                                localStorage.setItem('agri_saved_contact', this.authForm.contact);
+                            } else {
+                                localStorage.removeItem('agri_saved_contact');
+                            }
+                            this.triggerToast('Welcome back, ' + data.full_name);
+                            await this.checkSession();
+                            await this.loadData();
+                        } else {
+                            this.triggerToast(data.message || 'Login failed', 'error');
+                        }
+                    } catch(e) { this.triggerToast('Server error', 'error'); }
+                    this.authLoading = false;
+                },
+
+                async doRegister() {
+                    this.authLoading = true;
+                    try {
+                        const res = await fetch('/api/register', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(this.authForm)
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.triggerToast('Account created successfully!');
+                            await this.checkSession();
+                            await this.loadData();
+                        } else {
+                            this.triggerToast(data.message || 'Registration failed', 'error');
+                        }
+                    } catch(e) { this.triggerToast('Server error', 'error'); }
+                    this.authLoading = false;
+                },
+
+                async doLogout() {
+                    if (this.chatPollingInterval) clearInterval(this.chatPollingInterval);
+                    if (this.notificationPollingInterval) clearInterval(this.notificationPollingInterval);
+                    await fetch('/api/logout', {method: 'POST'});
+                    this.isLoggedIn = false;
+                    this.currentUser = null;
+                    this.role = null;
+                    this.authForm.password = '';
+                    this.currentTab = 'homepage';
+                    this.notifications = [];
+                    this.triggerToast('Logged out');
+                },
+
+                async changePassword() {
+                    if (this.passwordForm.new_password !== this.passwordForm.confirm_password) {
+                        return this.triggerToast('New passwords do not match!', 'error');
+                    }
+                    this.authLoading = true;
+                    try {
+                        const res = await fetch('/api/change_password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                current_password: this.passwordForm.current_password, 
+                                new_password: this.passwordForm.new_password 
+                            })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.triggerToast('Password updated successfully!');
+                            this.passwordForm = { current_password: '', new_password: '', confirm_password: '' };
+                        } else {
+                            this.triggerToast(data.message || 'Failed to update password', 'error');
+                        }
+                    } catch (e) {
+                        this.triggerToast('Server error', 'error');
+                    }
+                    this.authLoading = false;
+                },
+
+                async loadData() {
+                    this.isLoading = true;
+                    if (this.role === 'admin') {
+                        await this.fetchAdminData();
+                    } else {
+                        await Promise.all([
+                            this.fetchFarmers(),
+                            this.fetchProducts(),
+                            this.fetchPayments(),
+                            this.fetchChatContacts(),
+                            this.fetchNotifications()
+                        ]);
+                    }
+                    this.isLoading = false;
+                },
+                
+                async fetchNotifications(showToast = false) {
+                    try {
+                        const res = await fetch('/api/notifications');
+                        if (res.ok) {
+                            const data = await res.json();
+                            
+                            // If we have new unread notifications that we didn't have before, show toast
+                            if (showToast || (data.length > 0 && this.notifications.length > 0)) {
+                                const newUnread = data.filter(n => !n.is_read && !this.notifications.find(old => old.id === n.id));
+                                if (newUnread.length > 0) {
+                                    this.triggerToast(newUnread[0].content, 'info');
+                                }
+                            }
+                            
+                            this.notifications = data;
+                        }
+                    } catch(e) {}
+                },
+
+                async markNotificationsRead() {
+                    await fetch('/api/notifications/read', { method: 'POST' });
+                    // Locally update to avoid waiting for next poll
+                    this.notifications.forEach(n => n.is_read = 1);
+                },
+
+                async fetchAdminData() {
+                    const [resU, resO] = await Promise.all([fetch('/api/admin/users'), fetch('/api/admin/orders')]);
+                    if(resU.ok) this.adminUsers = await resU.json();
+                    if(resO.ok) this.adminOrders = await resO.json();
+                },
+
+                async deleteAdminUser(id, ban = false) {
+                    const action = ban ? 'permanently BAN and delete' : 'delete';
+                    if(!confirm(`Are you absolutely sure you want to ${action} this user?`)) return;
+                    const res = await fetch(`/api/admin/users/${id}?ban=${ban}`, {method: 'DELETE'});
+                    if(res.ok) {
+                        this.adminUsers = this.adminUsers.filter(u => u.id !== id);
+                        this.triggerToast(ban ? 'User securely banned and deleted' : 'User deleted');
+                        await this.fetchAdminData(); // Refresh orders too
+                    } else {
+                        this.triggerToast('Failed to delete', 'error');
+                    }
+                },
+
+                handleProfileUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.profileFile = file;
+                        this.profilePreview = URL.createObjectURL(file);
+                    }
+                },
+
+                async updateProfile() {
+                    this.authLoading = true;
+                    try {
+                        const formData = new FormData();
+                        formData.append('full_name', this.profileForm.full_name);
+                        formData.append('contact', this.profileForm.contact);
+                        formData.append('address', this.profileForm.address);
+                        if (this.profileForm.shop_name) formData.append('shop_name', this.profileForm.shop_name);
+                        if (this.profileFile) formData.append('profile_img', this.profileFile);
+
+                        const res = await fetch('/api/profile', {
+                            method: 'POST',
+                            body: formData // DO NOT set Content-Type, browser will set boundary automatically
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.triggerToast('Profile updated successfully!');
+                            await this.checkSession(); // refresh user data
+                            if (this.role === 'farmer') {
+                                await this.fetchFarmers(); // Refresh farmer data in case of name change
+                            }
+                        } else {
+                            this.triggerToast(data.message || 'Failed to update profile', 'error');
+                        }
+                    } catch(e) {
+                        this.triggerToast('Server error', 'error');
+                    }
+                    this.authLoading = false;
+                },
+
+                handleShopImgUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.shopImgFile = file;
+                        this.shopImgPreview = URL.createObjectURL(file);
+                    }
+                },
+
+                handleShopBannerUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.shopBannerFile = file;
+                        this.shopBannerPreview = URL.createObjectURL(file);
+                    }
+                },
+
+                async updateShopSettings() {
+                    this.authLoading = true;
+                    try {
+                        const formData = new FormData();
+                        formData.append('description', this.shopSettingsForm.description);
+                        formData.append('cat', this.shopSettingsForm.cat);
+                        formData.append('is_open', this.shopSettingsForm.is_open);
+                        if (this.shopImgFile) formData.append('shop_img', this.shopImgFile);
+                        if (this.shopBannerFile) formData.append('shop_banner', this.shopBannerFile);
+
+                        const res = await fetch('/api/shop_settings', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            this.triggerToast('Shop settings updated successfully!');
+                            await this.checkSession();
+                        } else {
+                            this.triggerToast(data.message || 'Failed to update shop settings', 'error');
+                        }
+                    } catch(e) {
+                        this.triggerToast('Server error', 'error');
+                    }
+                    this.authLoading = false;
+                },
+
+                async fetchFarmers() { const res = await fetch('/api/farmers'); this.farmers = await res.json(); },
+                async fetchProducts() { const res = await fetch('/api/products'); this.myProducts = await res.json(); },
+                async fetchPayments() { const res = await fetch('/api/payments'); if(res.ok) this.paymentMethods = await res.json(); },
+
+                async savePaymentMethod() {
+                    const res = await fetch('/api/payments', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(this.newPayment) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.paymentMethods.push(data.method);
+                        this.newPayment.details = '';
+                        this.triggerToast('Payment method saved!');
+                    } else { this.triggerToast('Error saving method', 'error'); }
+                },
+
+                openCheckout(product) {
+                    this.selectedProductToBuy = product;
+                    this.selectedPaymentId = this.paymentMethods.length > 0 ? this.paymentMethods[0].id : null;
+                    this.checkoutQuantity = 1;
+                    this.checkoutPaymentMode = this.paymentMethods.length > 0 ? 'saved' : 'new';
+                    this.checkoutNewPayment = { type: 'gcash', details: '' };
+                    this.isCheckoutModalOpen = true;
+                },
+
+                async confirmCheckout() {
+                    let paymentId = this.selectedPaymentId;
+                    
+                    if (this.checkoutPaymentMode === 'new') {
+                        if (this.checkoutNewPayment.type === 'cod') {
+                            this.checkoutNewPayment.details = 'Cash on Delivery';
+                        } else if (!this.checkoutNewPayment.details.trim()) {
+                            return this.triggerToast('Please enter payment details', 'error');
+                        }
+                        const pRes = await fetch('/api/payments', { 
+                            method: 'POST', 
+                            headers: {'Content-Type': 'application/json'}, 
+                            body: JSON.stringify(this.checkoutNewPayment) 
+                        });
+                        if (pRes.ok) {
+                            const pData = await pRes.json();
+                            paymentId = pData.method.id;
+                            this.paymentMethods.push(pData.method);
+                        } else {
+                            return this.triggerToast('Error saving payment method', 'error');
+                        }
+                    } else if (!paymentId) {
+                        return this.triggerToast('Please select a payment method', 'error');
+                    }
+
+                    const res = await fetch('/api/checkout', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ 
+                            product_id: this.selectedProductToBuy.id, 
+                            payment_method_id: paymentId,
+                            quantity: this.checkoutQuantity
+                        })
+                    });
+                    if (res.ok) {
+                        this.isCheckoutModalOpen = false;
+                        this.triggerToast('Payment successful!');
+                        if (this.role === 'consumer') {
+                            this.fetchProducts(); // Refresh products for updated stock
+                        }
+                    } else {
+                        const data = await res.json();
+                        this.triggerToast(data.message, 'error');
+                    }
+                },
+
+                handleNewProductImgUpload(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.newProductImgFile = file;
+                        this.newProductImgPreview = URL.createObjectURL(file);
+                    }
+                },
+
+                openAddProductModal() {
+                    this.isEditingProduct = false;
+                    this.editingProductId = null;
+                    this.newProduct = { name: '', price: '', cat: 'veggies', stock: 0 };
+                    this.newProductImgFile = null;
+                    this.newProductImgPreview = null;
+                    this.isModalOpen = true;
+                },
+
+                openEditProductModal(product) {
+                    this.isEditingProduct = true;
+                    this.editingProductId = product.id;
+                    this.newProduct = { name: product.name, price: product.price, cat: product.cat, stock: product.stock };
+                    this.newProductImgFile = null;
+                    this.newProductImgPreview = product.img || null;
+                    this.isModalOpen = true;
+                },
+
+                closeProductModal() {
+                    this.isModalOpen = false;
+                    this.newProduct = { name: '', price: '', cat: 'veggies', stock: 0 };
+                    this.newProductImgFile = null;
+                    this.newProductImgPreview = null;
+                },
+
+                async submitProduct() {
+                    if (!this.newProduct.name || !this.newProduct.price) return this.triggerToast('Fill all fields', 'error');
+                    
+                    const formData = new FormData();
+                    formData.append('name', this.newProduct.name);
+                    formData.append('price', this.newProduct.price);
+                    formData.append('cat', this.newProduct.cat);
+                    formData.append('stock', this.newProduct.stock || 0);
+                    if (this.newProductImgFile) {
+                        formData.append('product_img', this.newProductImgFile);
+                    }
+
+                    let url = '/api/products';
+                    let method = 'POST';
+                    if (this.isEditingProduct) {
+                        url = `/api/products/${this.editingProductId}`;
+                        method = 'PUT';
+                    }
+
+                    const res = await fetch(url, { method: method, body: formData });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (this.isEditingProduct) {
+                            const index = this.myProducts.findIndex(p => p.id === this.editingProductId);
+                            if (index !== -1) {
+                                this.myProducts[index] = { ...this.myProducts[index], name: this.newProduct.name, price: this.newProduct.price, cat: this.newProduct.cat, stock: this.newProduct.stock, img: data.img || this.myProducts[index].img };
+                            }
+                            this.triggerToast('Crop updated!');
+                        } else {
+                            this.myProducts.push(data.item);
+                            this.triggerToast('Crop added!');
+                        }
+                        this.closeProductModal();
+                    }
+                },
+
+                async fetchChatContacts() {
+                    const res = await fetch('/api/messages/contacts');
+                    if (res.ok) this.chatContacts = await res.json();
+                },
+
+                async openChat(user) {
+                    this.activeChatUser = user;
+                    this.chatMessages = []; // Reset messages for the new chat
+                    this.currentTab = 'messages';
+                    
+                    // Clear unread count locally
+                    const contact = this.chatContacts.find(c => c.id === user.id);
+                    if (contact) contact.unread_count = 0;
+                    
+                    await this.fetchChatMessages(true);
+                    
+                    if (this.chatPollingInterval) clearInterval(this.chatPollingInterval);
+                    this.chatPollingInterval = setInterval(() => this.fetchChatMessages(false), 3000);
+                },
+
+                async fetchChatMessages(scrollToBottom = true) {
+                    if (!this.activeChatUser) return;
+                    const res = await fetch(`/api/messages/${this.activeChatUser.id}`);
+                    if (res.ok) {
+                        const messages = await res.json();
+                        
+                        // Scroll if it's a force scroll OR if we actually have new messages
+                        const isNewMessages = messages.length > this.chatMessages.length;
+                        
+                        if (isNewMessages || scrollToBottom) {
+                            this.chatMessages = messages;
+                            this.$nextTick(() => {
+                                const container = document.getElementById('chatMessagesContainer');
+                                if (container) {
+                                    container.scrollTo({ top: container.scrollHeight, behavior: scrollToBottom ? 'auto' : 'smooth' });
+                                }
+                            });
+                        }
+                    }
+                },
+
+                async sendMessage() {
+                    if (!this.newMessage.trim() || !this.activeChatUser) return;
+                    
+                    const res = await fetch(`/api/messages/${this.activeChatUser.id}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ content: this.newMessage })
+                    });
+                    
+                    if (res.ok) {
+                        this.newMessage = '';
+                        await this.fetchChatMessages(true);
+                        await this.fetchChatContacts();
+                    }
+                },
+
+                async startChatWithFarmer(farmer) {
+                    const contactUser = {
+                        id: farmer.user_id,
+                        full_name: farmer.name,
+                        role: 'farmer',
+                        profile_img: farmer.img,
+                        shop_name: farmer.name,
+                        shop_img: farmer.img
+                    };
+                    
+                    if (!this.chatContacts.find(c => c.id === farmer.user_id)) {
+                        this.chatContacts.push(contactUser);
+                    }
+                    
+                    await this.openChat(contactUser);
+                },
+
+                async deleteProduct(id) {
+                    if(!confirm('Delete this product?')) return;
+                    const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+                    if(res.ok) { this.myProducts = this.myProducts.filter(p => p.id !== id); this.triggerToast('Deleted'); }
+                },
+
+                setCategory(cat) { this.activeCategory = cat; },
+                filteredFarmers() {
+                    return this.farmers.filter(f => f.name.toLowerCase().includes(this.searchQuery.toLowerCase()) && (this.activeCategory === 'all' || f.cat === this.activeCategory));
+                },
+                viewFarmer(farmer) { this.selectedFarmer = farmer; this.currentTab = 'farmerShop'; },
+                getFarmerProducts(fId) { return this.myProducts.filter(p => p.farmer_id === fId); },
+                
+                triggerToast(msg, type='success') {
+                    this.toastMessage = msg; this.toastType = type; this.showToast = true;
+                    setTimeout(() => { this.showToast = false; }, 3000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
