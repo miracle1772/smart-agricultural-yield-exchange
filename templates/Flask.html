@@ -227,7 +227,7 @@
                             <li><button @click="setCategory('all')" :class="activeCategory === 'all' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-border-all w-5 text-center text-lg"></i> All Items</button></li>
                             <li><button @click="setCategory('veggies')" :class="activeCategory === 'veggies' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-carrot w-5 text-center text-lg"></i> Vegetables</button></li>
                             <li><button @click="setCategory('fruits')" :class="activeCategory === 'fruits' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-apple-alt w-5 text-center text-lg"></i> Fruits</button></li>
-                            <li><button @click="setCategory('livestock')" :class="activeCategory === 'livestock' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-drumstick-bite w-5 text-center text-lg"></i> Livestock</button></li>
+                            <li><button @click="setCategory('rice')" :class="activeCategory === 'rice' ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 font-bold shadow-sm border border-green-100' : 'text-gray-600 hover:bg-white border border-transparent'" class="w-full text-left px-4 py-3 rounded-2xl transition-all flex items-center gap-3"><i class="fas fa-wheat-awn w-5 text-center text-lg"></i> Rice</button></li>
                         </ul>
                     </div>
                 </aside>
@@ -259,7 +259,7 @@
                             <button @click="setCategory('all')" :class="activeCategory === 'all' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">All Items</button>
                             <button @click="setCategory('veggies')" :class="activeCategory === 'veggies' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">Vegetables</button>
                             <button @click="setCategory('fruits')" :class="activeCategory === 'fruits' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">Fruits</button>
-                            <button @click="setCategory('livestock')" :class="activeCategory === 'livestock' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">Livestock</button>
+                            <button @click="setCategory('rice')" :class="activeCategory === 'rice' ? 'bg-green-100 text-green-700' : 'bg-white text-gray-600'" class="px-4 py-2 rounded-xl font-bold whitespace-nowrap shadow-sm border border-gray-100 text-sm">Rice</button>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative min-h-[200px]">
@@ -349,7 +349,7 @@
                                         <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col">
                                             <template x-if="!product.img">
                                                 <div class="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center mb-5 text-[#8F9E8B] border border-gray-200 shadow-inner text-xl">
-                                                    <i class="fas" :class="product.cat === 'veggies' ? 'fa-carrot' : (product.cat === 'fruits' ? 'fa-apple-alt' : 'fa-drumstick-bite')"></i>
+                                                    <i class="fas" :class="product.cat === 'veggies' ? 'fa-carrot' : (product.cat === 'fruits' ? 'fa-apple-alt' : 'fa-wheat-awn')"></i>
                                                 </div>
                                             </template>
                                             <template x-if="product.img">
@@ -410,7 +410,7 @@
                                 
                                 <div class="col-span-1 md:col-span-2 flex items-center gap-6 mb-2">
                                     <label class="cursor-pointer relative group block w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-sm shrink-0">
-                                        <img :src="shopImgPreview || (currentUser && currentUser.shop_img) || 'https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=200'" class="w-full h-full object-cover">
+                                        <img :src="shopImgPreview || (currentUser && currentUser.shop_img) || 'https://images.unsplash.com/photo-1586201327693-86619addc216?w=200'" class="w-full h-full object-cover">
                                         <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                             <i class="fas fa-camera text-white text-xl"></i>
                                         </div>
@@ -446,7 +446,7 @@
                                     <select x-model="shopSettingsForm.cat" class="block w-full rounded-xl p-3 border bg-gray-50">
                                         <option value="veggies">Vegetables</option>
                                         <option value="fruits">Fruits</option>
-                                        <option value="livestock">Livestock</option>
+                                        <option value="rice">Rice</option>
                                         <option value="all">All Items</option>
                                     </select>
                                 </div>
@@ -702,9 +702,18 @@
                     <!-- TAB: ADMIN DASHBOARD -->
                     <div x-show="currentTab === 'admin'" x-transition:enter="transition ease-out duration-300">
                         <div class="bg-white rounded-[2rem] border border-gray-100 shadow-md overflow-hidden mb-8">
-                            <div class="p-8 border-b border-gray-100 bg-gradient-to-br from-gray-800 to-gray-900 text-white">
-                                <h2 class="text-3xl font-black tracking-tight"><i class="fas fa-shield-alt mr-2 text-green-400"></i> Admin Dashboard</h2>
-                                <p class="text-gray-400 mt-2 font-medium">Manage platform users, view all transactions, and adjust settings.</p>
+                            <div class="p-8 border-b border-gray-100 bg-gradient-to-br from-gray-800 to-gray-900 text-white flex justify-between items-center">
+                                <div>
+                                    <h2 class="text-3xl font-black tracking-tight"><i class="fas fa-shield-alt mr-2 text-green-400"></i> Admin Dashboard</h2>
+                                    <p class="text-gray-400 mt-2 font-medium">Manage platform users, view all transactions, and adjust settings.</p>
+                                </div>
+                                <div class="text-right">
+                                    <div :class="dbType === 'postgres' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse'" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold">
+                                        <i class="fas" :class="dbType === 'postgres' ? 'fa-database' : 'fa-triangle-exclamation'"></i>
+                                        <span x-text="dbType === 'postgres' ? 'Cloud Database (Safe)' : 'Local SQLite (Ephemeral - DATA WILL BE LOST)'"></span>
+                                    </div>
+                                    <p x-show="dbType !== 'postgres'" class="text-[10px] text-red-400/80 mt-1 uppercase tracking-tighter">Warning: Persistence not configured on Render</p>
+                                </div>
                             </div>
                             
                             <!-- Admin Tabs -->
@@ -817,7 +826,7 @@
                         <select x-model="newProduct.cat" class="block w-full rounded-xl p-3 border bg-gray-50 flex-1">
                             <option value="veggies">Vegetables</option>
                             <option value="fruits">Fruits</option>
-                            <option value="livestock">Livestock</option>
+                            <option value="rice">Rice</option>
                         </select>
                         <input type="number" x-model="newProduct.stock" min="0" class="block w-32 rounded-xl p-3 border bg-gray-50" placeholder="Stock Qty">
                     </div>
@@ -947,6 +956,7 @@
                 showToast: false,
                 toastMessage: '',
                 toastType: 'success',
+                dbType: 'unknown',
 
                 selectedFarmer: null,
                 myProducts: [],
@@ -996,6 +1006,7 @@
                                 this.shopImgPreview = data.user.shop_img;
                             }
                             this.role = data.user.role;
+                            this.dbType = data.db_type || 'unknown';
                             this.isLoggedIn = true;
                             if (this.role === 'admin') this.currentTab = 'admin';
                         } else {
